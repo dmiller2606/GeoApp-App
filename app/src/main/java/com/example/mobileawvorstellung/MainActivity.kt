@@ -1,14 +1,17 @@
 package com.example.mobileawvorstellung
 
 import android.Manifest
-import android.graphics.drawable.BitmapDrawable
 import android.os.Bundle
 import android.preference.PreferenceManager
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.databinding.DataBindingUtil
+import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.ViewModelProvider
 import com.example.mobileawvorstellung.databinding.ActivityMainBinding
+import okhttp3.*
+import okio.IOException
 import org.osmdroid.bonuspack.kml.KmlDocument
-import org.osmdroid.bonuspack.kml.Style
 import org.osmdroid.config.Configuration.getInstance
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
@@ -19,6 +22,10 @@ import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
 
 class MainActivity : AppCompatActivity() {
     private lateinit var map: MapView
+    private var geoJson = MutableLiveData<String>()
+    private val viewModel : MainViewModel by viewModels {
+        MainViewModelFactory(application)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,19 +44,28 @@ class MainActivity : AppCompatActivity() {
         mapController.setZoom(7.0)
         mapController.setCenter(GeoPoint(51.1657,10.4515))
 
+        // Countries GeoJson Overlay
+        viewModel.getInzidenzJson()
+        viewModel.geoJson.observe(this) {
+            buildGeoJsonOverlay(it, map)
+        }
         //Location display
         val locationOverlay = MyLocationNewOverlay(GpsMyLocationProvider(ctx), map)
         locationOverlay.enableMyLocation()
         map.overlays.add(locationOverlay)
         map.invalidate()
+    }
 
-        // Countries GeoJson Overlay
-        val geoJsonString = assets.open("bundeslaender.json").bufferedReader().use { it.readText() }
-
+    private fun buildGeoJsonOverlay(geoJson: String, map: MapView) {
+        println(geoJson)
+        val styler = InzidenzStyler()
         val kmlDocument = KmlDocument()
-        kmlDocument.parseGeoJSON(geoJsonString)
-        val kmlOverlay = kmlDocument.mKmlRoot.buildOverlay(map,null,null,kmlDocument)
+        kmlDocument.parseGeoJSON(geoJson)
+        val kmlOverlay = kmlDocument.mKmlRoot.buildOverlay(map,null,styler,kmlDocument)
         map.overlays.add(kmlOverlay)
+        val bb = kmlDocument.mKmlRoot.boundingBox
+        map.controller.setCenter(bb.centerWithDateLine)
+        map.invalidate()
     }
 
     override fun onResume() {
