@@ -1,42 +1,20 @@
 package com.example.mobileawvorstellung
 
-import android.app.Application
 import android.graphics.Color
-import android.graphics.Paint
-import android.util.JsonReader
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.json.Json
+import android.graphics.DashPathEffect
 import org.osmdroid.bonuspack.kml.*
+import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Overlay
 import org.osmdroid.views.overlay.Polygon
 import org.osmdroid.views.overlay.Polyline
-import java.io.InputStream
-import java.io.InputStreamReader
+import org.osmdroid.views.overlay.infowindow.BasicInfoWindow
+import java.text.DateFormat.getDateInstance
+import java.util.*
+import kotlin.math.roundToLong
 
-/**
- *     init{
-_plantList = try {
-val data = InputStreamReader(getApplication<Application>().assets.open("bienenpflanzen.json"),StandardCharsets.ISO_8859_1).readText()
-val plantList: List<Plant> = Json.decodeFromString(data)
-plantList
-} catch (e: Exception){
-Timber.i(e)
-emptyList<Plant>()
-}
-}
+class InzidenzStyler(private val map: MapView) : KmlFeature.Styler {
 
-@Serializable
-data class Plant(
-val name: String,
-val bluete: String,
-val bluetezeit: String,
-val wuchs: String,
-val standort: String
-)
- */
-class InzidenzStyler: KmlFeature.Styler {
     override fun onFeature(overlay: Overlay?, kmlFeature: KmlFeature?) {
     }
 
@@ -57,7 +35,7 @@ class InzidenzStyler: KmlFeature.Styler {
     ) {
         val inzidenz = kmlPlacemark?.getExtendedData("cases7_bl_per_100k")?.toFloat()
         if (inzidenz != null) {
-            polygon?.fillColor = when{
+            polygon?.fillPaint?.color = when {
                 inzidenz > 1000.0 -> 0xB099000d.toInt()
                 inzidenz > 500.0 -> 0xB0cb181d.toInt()
                 inzidenz > 250.0 -> 0xB0ef3b2c.toInt()
@@ -65,8 +43,25 @@ class InzidenzStyler: KmlFeature.Styler {
                 inzidenz > 50.0 -> 0xB0fc9272.toInt()
                 inzidenz > 25.0 -> 0xB0fcbba1.toInt()
                 inzidenz > 5.0 -> 0xB0fee0d2.toInt()
-                else -> {0xB0fff5f0.toInt()}
+                else -> {
+                    0xA0fff5f0.toInt()
+                }
             }
+        }
+
+        if (polygon != null && kmlPlacemark != null) {
+            polygon.outlinePaint.strokeWidth = 4F
+            polygon.outlinePaint.color = Color.WHITE
+            polygon.outlinePaint.pathEffect = DashPathEffect(floatArrayOf(30F,20F),0F)
+
+            polygon.infoWindow = BasicInfoWindow(org.osmdroid.bonuspack.R.layout.bonuspack_bubble, map)
+            polygon.title = kmlPlacemark.getExtendedData("LAN_ew_GEN")
+            val roundedInzidenz = inzidenz?.roundToLong()
+            polygon.snippet = "7 Tage Inzidenz: $roundedInzidenz / 100000 Einwohner"
+            val date = Date(kmlPlacemark.getExtendedData("Aktualisierung").toLong())
+            val formatter = getDateInstance()
+            val formattedDate = formatter.format(date)
+            polygon.subDescription = "Aktualisiert am $formattedDate | Robert Koch-Institut (RKI), dl-de/by-2-0"
         }
     }
 

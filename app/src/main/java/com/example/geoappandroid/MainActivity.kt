@@ -1,28 +1,26 @@
 package com.example.mobileawvorstellung
 
 import android.Manifest
+import android.content.Context
 import android.os.Bundle
 import android.preference.PreferenceManager
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.databinding.DataBindingUtil
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.ViewModelProvider
-import com.example.mobileawvorstellung.databinding.ActivityMainBinding
-import okhttp3.*
-import okio.IOException
+import com.example.geoappandroid.databinding.ActivityMainBinding
 import org.osmdroid.bonuspack.kml.KmlDocument
 import org.osmdroid.config.Configuration.getInstance
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.CopyrightOverlay
 import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
 
 
 class MainActivity : AppCompatActivity() {
     private lateinit var map: MapView
-    private var geoJson = MutableLiveData<String>()
     private val viewModel : MainViewModel by viewModels {
         MainViewModelFactory(application)
     }
@@ -43,13 +41,24 @@ class MainActivity : AppCompatActivity() {
         val mapController = map.controller
         mapController.setZoom(7.0)
         mapController.setCenter(GeoPoint(51.1657,10.4515))
-
+        map.setScrollableAreaLimitLatitude(57.0,45.0,10)
+        map.setScrollableAreaLimitLongitude(4.0,17.0,10)
         // Countries GeoJson Overlay
         viewModel.getInzidenzJson()
         viewModel.geoJson.observe(this) {
             buildGeoJsonOverlay(it, map)
+            locationOverlay(ctx,map)
+            attributionOverlay(ctx,map)
         }
-        //Location display
+    }
+
+    private fun attributionOverlay(ctx: Context?, map: MapView) {
+        val attributionOverlay = CopyrightOverlay(ctx)
+        attributionOverlay.setCopyrightNotice("© OpenStreetMap |  Robert Koch-Institut (RKI), dl-de/by-2-0")
+        map.overlays.add(attributionOverlay)
+    }
+
+    private fun locationOverlay(ctx: Context?,map: MapView) {
         val locationOverlay = MyLocationNewOverlay(GpsMyLocationProvider(ctx), map)
         locationOverlay.enableMyLocation()
         map.overlays.add(locationOverlay)
@@ -58,7 +67,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun buildGeoJsonOverlay(geoJson: String, map: MapView) {
         println(geoJson)
-        val styler = InzidenzStyler()
+        val styler = InzidenzStyler(map)
         val kmlDocument = KmlDocument()
         kmlDocument.parseGeoJSON(geoJson)
         val kmlOverlay = kmlDocument.mKmlRoot.buildOverlay(map,null,styler,kmlDocument)
