@@ -7,8 +7,7 @@ import android.preference.PreferenceManager
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.databinding.DataBindingUtil
-import androidx.lifecycle.MutableLiveData
-import com.example.geoappandroid.databinding.ActivityMainBinding
+import com.example.mobileawvorstellung.databinding.ActivityMainBinding
 import org.osmdroid.bonuspack.kml.KmlDocument
 import org.osmdroid.config.Configuration.getInstance
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
